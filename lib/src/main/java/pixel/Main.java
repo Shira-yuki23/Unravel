@@ -26,7 +26,9 @@ import com.jme3.texture.FrameBuffer;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
-
+import com.jme3.input.MouseInput;
+import com.jme3.input.controls.AnalogListener;
+import com.jme3.input.controls.MouseAxisTrigger;
 
 public class Main extends SimpleApplication {
 
@@ -52,7 +54,20 @@ public class Main extends SimpleApplication {
     private boolean movingBackward = false;
     private boolean movingLeft = false;
     private boolean movingRight = false;
+    //223
+    private final Vector3f characterFacing =
+            new Vector3f(0f, 0f, -1f);
 
+  //  private static final float CAMERA_DISTANCE = 14f; 
+    //223
+    private float cameraDistance = 14f;
+
+    private static final float MIN_CAMERA_DISTANCE = 6f;
+    private static final float MAX_CAMERA_DISTANCE = 26f;
+    private static final float CAMERA_ZOOM_SPEED = 20f;
+    //
+    private static final float CAMERA_HEIGHT = 7f;
+    private static final float CAMERA_SMOOTHNESS = 8f;
 
     // =========================================================
     // PHYSICS
@@ -272,7 +287,12 @@ public class Main extends SimpleApplication {
         );
 
         rootNode.addLight(topLight);
+        
+        //223chngcam
+        flyCam.setEnabled(false);
 
+        updateThirdPersonCamera(1f);
+        /*
 
         // =====================================================
         // CAMERA
@@ -310,7 +330,7 @@ public class Main extends SimpleApplication {
                 cameraDirection,
                 Vector3f.UNIT_Y
         );
-
+		*/
 
         // =====================================================
         // LOW-RESOLUTION FRAMEBUFFER
@@ -431,7 +451,9 @@ public class Main extends SimpleApplication {
         inputManager.addMapping(
                 "CharacterForward",
                 new KeyTrigger(
-                        KeyInput.KEY_A
+                       // KeyInput.KEY_A //fms
+                		KeyInput.KEY_UP
+                		
                 )
         );
 
@@ -440,7 +462,8 @@ public class Main extends SimpleApplication {
         inputManager.addMapping(
                 "CharacterBackward",
                 new KeyTrigger(
-                        KeyInput.KEY_B
+                      //fms//  KeyInput.KEY_B
+                		KeyInput.KEY_DOWN
                 )
         );
 
@@ -449,7 +472,8 @@ public class Main extends SimpleApplication {
         inputManager.addMapping(
                 "CharacterLeft",
                 new KeyTrigger(
-                        KeyInput.KEY_C
+                       //fms// KeyInput.KEY_C
+                		KeyInput.KEY_LEFT
                 )
         );
 
@@ -458,7 +482,8 @@ public class Main extends SimpleApplication {
         inputManager.addMapping(
                 "CharacterRight",
                 new KeyTrigger(
-                        KeyInput.KEY_D
+                       //fms// KeyInput.KEY_D
+                		KeyInput.KEY_RIGHT
                 )
         );
 
@@ -471,6 +496,30 @@ public class Main extends SimpleApplication {
                 "CharacterLeft",
                 "CharacterRight"
         );
+        //223
+        inputManager.addMapping(
+                "CameraZoomIn",
+                new MouseAxisTrigger(
+                        MouseInput.AXIS_WHEEL,
+                        false
+                )
+        );
+
+        inputManager.addMapping(
+                "CameraZoomOut",
+                new MouseAxisTrigger(
+                        MouseInput.AXIS_WHEEL,
+                        true
+                )
+        );
+
+        inputManager.addListener(
+                zoomListener,
+                "CameraZoomIn",
+                "CameraZoomOut"
+        );
+        //
+        
     }
 
 
@@ -553,16 +602,50 @@ public class Main extends SimpleApplication {
         // -----------------------------------------------------
         // CHARACTER DIRECTION
         // -----------------------------------------------------
-
+        
         if (walkDirection.lengthSquared() > 0) {
 
-            characterControl.setViewDirection(
+           /* characterControl.setViewDirection(
                     walkDirection.normalize()
-            );
+            );*/
+        	//223
+        	characterFacing.set(walkDirection).normalizeLocal();
+
+        	characterControl.setViewDirection(
+        	        characterFacing
+        	);
         }
+        //223
+        updateThirdPersonCamera(tpf);
     }
+    
+    //223
+    private void updateThirdPersonCamera(float tpf) {
 
+        Vector3f lookAtPoint =
+                character.getWorldTranslation().add(
+                        0f, 2.5f, 0f
+                );
 
+        Vector3f wantedCameraPosition =
+                lookAtPoint
+                        //223//.subtract(characterFacing.mult(CAMERA_DISTANCE))
+                .subtract(characterFacing.mult(cameraDistance))
+                //
+                        .addLocal(0f, CAMERA_HEIGHT, 0f);
+
+        float followAmount =
+                Math.min(1f, CAMERA_SMOOTHNESS * tpf);
+
+        Vector3f smoothCameraPosition =
+                cam.getLocation().clone().interpolateLocal(
+                        wantedCameraPosition,
+                        followAmount
+                );
+
+        cam.setLocation(smoothCameraPosition);
+        cam.lookAt(lookAtPoint, Vector3f.UNIT_Y);
+    }
     // =========================================================
     // KEYBOARD INPUT
     // =========================================================
@@ -602,6 +685,37 @@ public class Main extends SimpleApplication {
 
                 movingRight = isPressed;
             }
+        }
+      //fms
+    };
+
+    private final AnalogListener zoomListener =
+            new AnalogListener() {
+
+        @Override
+        public void onAnalog(
+                String name,
+                float value,
+                float tpf
+        ) {
+
+            if (name.equals("CameraZoomIn")) {
+                cameraDistance -=
+                        value * CAMERA_ZOOM_SPEED;
+            }
+
+            if (name.equals("CameraZoomOut")) {
+                cameraDistance +=
+                        value * CAMERA_ZOOM_SPEED;
+            }
+
+            cameraDistance = Math.max(
+                    MIN_CAMERA_DISTANCE,
+                    Math.min(
+                            MAX_CAMERA_DISTANCE,
+                            cameraDistance
+                    )
+            );
         }
     };
 }
