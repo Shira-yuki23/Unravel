@@ -1,0 +1,16 @@
+# Gradle build output
+.gradle/
+**/build/
+**/bin/
+out/
+
+# Eclipse and IntelliJ workspace files
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+
+# Operating-system files
+.DS_Store
+Thumbs.db
