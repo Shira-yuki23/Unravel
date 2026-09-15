@@ -208,6 +208,10 @@ public final class CrowNpcAppState extends BaseAppState
         hideDialogue();
     }
 
+    public boolean isEncounterComplete() {
+        return phase == EncounterPhase.VANISHED;
+    }
+
     private Geometry createCrowSprite() {
         Texture texture = simpleApplication.getAssetManager().loadTexture(CROW_TEXTURE);
         texture.setMagFilter(Texture.MagFilter.Nearest);

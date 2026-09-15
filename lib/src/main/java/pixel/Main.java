@@ -14,6 +14,7 @@ import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.ui.Picture;
 
@@ -74,7 +75,9 @@ public class Main extends SimpleApplication {
     // =========================================================
 
     private BulletAppState bulletAppState;
-
+    private EpisodeTwoAppState episodeTwo;
+    private EpisodeThreeAppState episodeThree;
+    private EpisodeFourAppState episodeFour;
 
     // =========================================================
     // MAIN
@@ -138,6 +141,23 @@ public class Main extends SimpleApplication {
 
         rootNode.attachChild(campus);
 
+        // Use the gate exported with the campus model as the spawn marker.
+        rootNode.updateGeometricState();
+        Spatial gate = findSpatialByName(campus, "gate");
+
+        if (gate == null) {
+            throw new IllegalStateException(
+                    "Campus model is missing the required 'gate' node"
+            );
+        }
+
+        Vector3f gateSpawnPosition =
+                new Vector3f(
+                        63.7575f,
+                        0.3852f,
+                        84.4720f
+                );
+
 
         // =====================================================
         // CAMPUS COLLISION
@@ -175,11 +195,7 @@ public class Main extends SimpleApplication {
         // CHARACTER START POSITION
         // =====================================================
 
-        character.setLocalTranslation(
-                -70.9211f,
-                9.00049f,
-                2.81667f
-        );
+        character.setLocalTranslation(gateSpawnPosition);
 
 
         rootNode.attachChild(character);
@@ -203,6 +219,9 @@ public class Main extends SimpleApplication {
         bulletAppState
                 .getPhysicsSpace()
                 .add(characterControl);
+
+        // Keep the physics body and the visible model aligned at the gate.
+        characterControl.warp(gateSpawnPosition);
 
 
         // =====================================================
@@ -433,19 +452,53 @@ public class Main extends SimpleApplication {
         
         //
         //223-paschng
-        stateManager.attach(new PrologueAppState());
+        stateManager.attach(new PrologueAppState(campus, character));
         ArchaeologicalArchiveAppState archive =
                 new ArchaeologicalArchiveAppState();
 
         stateManager.attach(archive);
 
-        stateManager.attach(
-                new CrowNpcAppState(character, archive)
+        CrowNpcAppState crow = new CrowNpcAppState(character, archive);
+        stateManager.attach(crow);
+        episodeTwo = new EpisodeTwoAppState(
+                character, bulletAppState.getPhysicsSpace(), crow::isEncounterComplete, archive,
+                new Vector3f(40.7807f, 0.3821f, 49.6151f),
+                new Vector3f(45.4184f, 0.3847f, -48.7126f)
+        );
+        stateManager.attach(episodeTwo);
+        episodeThree = new EpisodeThreeAppState(
+                character,
+                episodeTwo::isComplete,
+                () -> {
+                    movingForward = false;
+                    movingBackward = false;
+                    movingLeft = false;
+                    movingRight = false;
+                    characterControl.setWalkDirection(new Vector3f());
+                }
         );
 
+        stateManager.attach(episodeThree);
+
+        episodeFour = new EpisodeFourAppState(
+                character,
+                episodeTwo::isComplete,
+                () -> {
+                    movingForward = false;
+                    movingBackward = false;
+                    movingLeft = false;
+                    movingRight = false;
+                    characterControl.setWalkDirection(new Vector3f());
+                }
+        );
+        stateManager.attach(episodeFour);
         // =====================================================
         // INPUT
         // =====================================================
+
+        // P prints the player feet position for placing story objects.
+        inputManager.addMapping("PrintPosition", new KeyTrigger(KeyInput.KEY_P));
+        inputManager.addListener(actionListener, "PrintPosition");
 
         // A = Forward
         inputManager.addMapping(
@@ -594,6 +647,11 @@ public class Main extends SimpleApplication {
         // CHARACTER MOVEMENT
         // -----------------------------------------------------
 
+        if ((episodeTwo != null && episodeTwo.isDialogueVisible())
+                || (episodeThree != null && episodeThree.isVideoPlaying())
+                || (episodeFour != null && episodeFour.isVideoPlaying())) {
+            walkDirection.set(0f, 0f, 0f);
+        }
         characterControl.setWalkDirection(
                 walkDirection
         );
@@ -646,6 +704,28 @@ public class Main extends SimpleApplication {
         cam.setLocation(smoothCameraPosition);
         cam.lookAt(lookAtPoint, Vector3f.UNIT_Y);
     }
+
+    private Spatial findSpatialByName(
+            Spatial spatial,
+            String name
+    ) {
+        if (name.equals(spatial.getName())) {
+            return spatial;
+        }
+
+        if (spatial instanceof Node) {
+            for (Spatial child : ((Node) spatial).getChildren()) {
+                Spatial match = findSpatialByName(child, name);
+
+                if (match != null) {
+                    return match;
+                }
+            }
+        }
+
+        return null;
+    }
+
     // =========================================================
     // KEYBOARD INPUT
     // =========================================================
@@ -659,6 +739,13 @@ public class Main extends SimpleApplication {
                 boolean isPressed,
                 float tpf) {
 
+            if ("PrintPosition".equals(name) && isPressed) {
+                Vector3f position = character.getWorldTranslation();
+                System.out.printf(java.util.Locale.ROOT,
+                        "PLACEMENT POSITION: new Vector3f(%.4ff, %.4ff, %.4ff)%n",
+                        position.x, position.y, position.z);
+                return;
+            }
             if (name.equals(
                     "CharacterForward")) {
 

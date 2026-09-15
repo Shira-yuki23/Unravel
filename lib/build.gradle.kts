@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    // Use JUnit Jupiter for testing.
+
     testImplementation(libs.junit.jupiter)
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -31,6 +31,9 @@ dependencies {
     implementation("org.jmonkeyengine:jme3-lwjgl3:3.8.0-stable")
     implementation("org.jmonkeyengine:jme3-plugins:3.8.0-stable")
     implementation("org.jmonkeyengine:jme3-jbullet:3.8.0-stable")
+    implementation(files("libs/javafx/javafx-base-21.0.8-win.jar"))
+    implementation(files("libs/javafx/javafx-graphics-21.0.8-win.jar"))
+    implementation(files("libs/javafx/javafx-media-21.0.8-win.jar"))
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

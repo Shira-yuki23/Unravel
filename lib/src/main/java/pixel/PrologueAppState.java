@@ -1,6 +1,12 @@
 package pixel;
 
 import com.jme3.app.Application;
+import com.jme3.bounding.BoundingBox;
+import com.jme3.math.Vector3f;
+import com.jme3.renderer.Camera;
+import com.jme3.renderer.ViewPort;
+import com.jme3.texture.FrameBuffer;
+import com.jme3.texture.Image;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.font.BitmapFont;
@@ -56,7 +62,25 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
     private boolean introVisible = true;
     private boolean objectivesVisible;
     private boolean radarVisible;
+    //223
+    private final Spatial campus;
+    private final Spatial player;
 
+    private Camera radarCamera;
+    private ViewPort radarView;
+    private FrameBuffer radarBuffer;
+    private Texture2D radarTexture;
+    private Geometry playerMarker;
+
+    private float radarMapX;
+    private float radarMapY;
+    private float radarMapWidth;
+    private float radarMapHeight;
+
+    public PrologueAppState(Spatial campus, Spatial player) {
+        this.campus = campus;
+        this.player = player;
+    }
     @Override
     protected void initialize(Application application) {
         if (!(application instanceof SimpleApplication)) {
@@ -116,8 +140,24 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         if (prologueGui != null) {
             prologueGui.removeFromParent();
         }
-    }
 
+        if (radarView != null) {
+            radarView.setEnabled(false);
+            radarView.clearScenes();
+            simpleApplication.getRenderManager().removePreView(radarView);
+            radarView = null;
+        }
+
+        if (radarBuffer != null) {
+            radarBuffer.dispose();
+            radarBuffer = null;
+        }
+
+        if (radarTexture != null) {
+            radarTexture.getImage().dispose();
+            radarTexture = null;
+        }
+    }
     @Override
     protected void onEnable() {
         if (prologueGui.getParent() == null) {
@@ -128,6 +168,10 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
     @Override
     protected void onDisable() {
         prologueGui.removeFromParent();
+
+        if (radarView != null) {
+            radarView.setEnabled(false);
+        }
     }
 
     @Override
@@ -155,7 +199,52 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
             setPanelVisible(radarPanel, radarVisible);
         }
     }
+    @Override
+    public void update(float tpf) {
+        if (radarView == null) {
+            return;
+        }
 
+        radarView.setEnabled(radarVisible);
+
+        if (!radarVisible) {
+            return;
+        }
+
+        Vector3f mapPosition = radarCamera.getScreenCoordinates(
+                player.getWorldTranslation()
+        );
+
+        float u = mapPosition.x / radarCamera.getWidth();
+        float v = mapPosition.y / radarCamera.getHeight();
+
+        boolean insideMap =
+                u >= 0f && u <= 1f &&
+                v >= 0f && v <= 1f;
+
+        playerMarker.setCullHint(
+                insideMap ? Spatial.CullHint.Never : Spatial.CullHint.Always
+        );
+
+        if (insideMap) {
+            float markerX = radarMapX + u * radarMapWidth;
+            float markerY = radarMapY + v * radarMapHeight;
+
+            markerX = Math.max(
+                    radarMapX + 5f,
+                    Math.min(radarMapX + radarMapWidth - 5f, markerX)
+            );
+
+            markerY = Math.max(
+                    radarMapY + 5f,
+                    Math.min(radarMapY + radarMapHeight - 5f, markerY)
+            );
+
+            playerMarker.setLocalTranslation(
+                    markerX - 5f, markerY - 5f, 3f
+            );
+        }
+    }
     private Node createIntroPanel(float screenWidth, float screenHeight) {
         Node panel = new Node("PrologueIntroPanel");
         panel.attachChild(createRectangle(
@@ -273,7 +362,7 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         return panel;
     }
 
-    private Node createRadarPanel(float screenWidth, float screenHeight) {
+   /* private Node createRadarPanel(float screenWidth, float screenHeight) {
         Node panel = new Node("AlienRadarPanel");
         float x = screenWidth - 512f;
         float y = 34f;
@@ -294,6 +383,62 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         panel.attachChild(createRectangle(mapX + 263f, mapY + 118f, 15f, 15f, SIGNAL_COLOR));
         panel.attachChild(createText("BLUE SIGNAL: MUSAFIR", 14f, SIGNAL_COLOR, x + 18f, y + 38f));
         panel.attachChild(createText("M: close radar", 14f, MUTED_TEXT_COLOR, x + 18f, y + 18f));
+
+        return panel;
+    }*/
+    private Node createRadarPanel(float screenWidth, float screenHeight) {
+        Node panel = new Node("AlienRadarPanel");
+
+        float panelWidth = 480f;
+        float panelHeight = 344f;
+        float x = screenWidth - panelWidth - 32f;
+        float y = 34f;
+
+        radarMapX = x + 20f;
+        radarMapY = y + 66f;
+        radarMapWidth = 440f;
+        radarMapHeight = 210f;
+
+        panel.attachChild(createRectangle(
+                x, y, panelWidth, panelHeight, PANEL_COLOR
+        ));
+
+        panel.attachChild(createRectangle(
+                x, y + panelHeight - 5f,
+                panelWidth, 5f, PANEL_EDGE_COLOR
+        ));
+
+        panel.attachChild(createText(
+                "ALIEN RADAR", 20f, PANEL_EDGE_COLOR,
+                x + 18f, y + panelHeight - 36f
+        ));
+
+        panel.attachChild(createText(
+                "IUT campus - live overhead view",
+                14f, MUTED_TEXT_COLOR,
+                x + 18f, y + panelHeight - 58f
+        ));
+
+        panel.attachChild(createMapPicture(
+                radarMapX, radarMapY,
+                radarMapWidth, radarMapHeight
+        ));
+
+        playerMarker = createRectangle(
+                0f, 0f, 10f, 10f, ColorRGBA.Yellow
+        );
+        playerMarker.setLocalTranslation(0f, 0f, 3f);
+        panel.attachChild(playerMarker);
+
+        panel.attachChild(createText(
+                "YELLOW MARKER: YOU", 14f, ColorRGBA.Yellow,
+                x + 18f, y + 38f
+        ));
+
+        panel.attachChild(createText(
+                "M: close radar", 14f, MUTED_TEXT_COLOR,
+                x + 18f, y + 18f
+        ));
 
         return panel;
     }
@@ -320,7 +465,7 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         return rectangle;
     }
 
-    private Picture createMapPicture(
+ /*   private Picture createMapPicture(
             float x,
             float y,
             float width,
@@ -340,7 +485,94 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         picture.setQueueBucket(RenderQueue.Bucket.Gui);
         return picture;
     }
+*/
+    private Picture createMapPicture(
+            float x, float y, float width, float height
+    ) {
+        int textureWidth = 880;
+        int textureHeight = 420;
 
+        simpleApplication.getRootNode().updateGeometricState();
+
+        /*BoundingBox bounds = new BoundingBox();
+        bounds.setMinMax(
+                campus.getWorldBound().getMin(null),
+                campus.getWorldBound().getMax(null)
+        );*/
+        BoundingBox bounds = new BoundingBox();
+        bounds.mergeLocal(campus.getWorldBound());
+
+        Vector3f center = bounds.getCenter();
+        float aspect = (float) textureWidth / textureHeight;
+
+        // Fit the entire campus, with a little space around its edges.
+        float halfHeight = Math.max(
+                bounds.getZExtent(),
+                bounds.getXExtent() / aspect
+        ) * 1.08f;
+
+        halfHeight = Math.max(halfHeight, 1f);
+        float halfWidth = halfHeight * aspect;
+
+        float cameraY = center.y + bounds.getYExtent() + 100f;
+        float farDistance = 2f * bounds.getYExtent() + 200f;
+
+        radarCamera = new Camera(textureWidth, textureHeight);
+        radarCamera.setParallelProjection(true);
+        radarCamera.setFrustum(
+                1f, farDistance,
+                -halfWidth, halfWidth,
+                halfHeight, -halfHeight
+        );
+
+        radarCamera.setLocation(new Vector3f(
+                center.x, cameraY, center.z
+        ));
+
+        // Look straight down; negative Z points toward the map's top.
+        radarCamera.lookAtDirection(
+                new Vector3f(0f, -1f, 0f),
+                new Vector3f(0f, 0f, -1f)
+        );
+        radarCamera.update();
+
+        radarTexture = new Texture2D(
+                textureWidth, textureHeight, Image.Format.RGBA8
+        );
+        radarTexture.setMinFilter(Texture.MinFilter.BilinearNoMipMaps);
+        radarTexture.setMagFilter(Texture.MagFilter.Bilinear);
+
+        radarBuffer = new FrameBuffer(textureWidth, textureHeight, 1);
+        radarBuffer.setDepthTarget(
+                FrameBuffer.FrameBufferTarget.newTarget(Image.Format.Depth)
+        );
+        radarBuffer.addColorTarget(
+                FrameBuffer.FrameBufferTarget.newTarget(radarTexture)
+        );
+
+        radarView = simpleApplication.getRenderManager()
+                .createPreView("CampusRadarView", radarCamera);
+
+        radarView.setClearFlags(true, true, true);
+        radarView.setBackgroundColor(new ColorRGBA(
+                0.05f, 0.08f, 0.12f, 1f
+        ));
+        radarView.setOutputFrameBuffer(radarBuffer);
+        radarView.attachScene(simpleApplication.getRootNode());
+        radarView.setEnabled(false);
+
+        Picture picture = new Picture("LiveCampusMap");
+        picture.setTexture(
+                simpleApplication.getAssetManager(), radarTexture, false
+        );
+        picture.setPosition(x, y);
+        picture.setWidth(width);
+        picture.setHeight(height);
+        picture.setQueueBucket(RenderQueue.Bucket.Gui);
+        picture.setLocalTranslation(x, y, 1f);
+
+        return picture;
+    }
     private BitmapText createText(
             String text,
             float size,
