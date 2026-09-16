@@ -78,6 +78,7 @@ public class Main extends SimpleApplication {
     private EpisodeTwoAppState episodeTwo;
     private EpisodeThreeAppState episodeThree;
     private EpisodeFourAppState episodeFour;
+    private EndingAppState ending;
 
     // =========================================================
     // MAIN
@@ -89,10 +90,15 @@ public class Main extends SimpleApplication {
 
         AppSettings settings = new AppSettings(true);
 
-        settings.setResolution(1280, 720);
+        // Use the monitor's native mode; keep the internal pixel framebuffer unchanged.
+        java.awt.DisplayMode display = java.awt.GraphicsEnvironment
+                .getLocalGraphicsEnvironment().getDefaultScreenDevice().getDisplayMode();
+        settings.setResolution(display.getWidth(), display.getHeight());
+        settings.setFullscreen(true);
         settings.setTitle("Unravel");
 
         app.setSettings(settings);
+        app.setShowSettings(false);
 
         app.start();
     }
@@ -186,7 +192,7 @@ public class Main extends SimpleApplication {
         // LOAD CHARACTER
         // =====================================================
 
-        character = assetManager.loadModel(
+        Spatial characterModel = assetManager.loadModel(
                 "assets/Models/character2.glb"
         );
 
@@ -195,6 +201,12 @@ public class Main extends SimpleApplication {
         // CHARACTER START POSITION
         // =====================================================
 
+        // The exported model's origin is near its head. Keep physics at the feet,
+        // and offset only the artwork inside a separate player node.
+        character = createFeetAlignedCharacter(characterModel);
+        character.updateGeometricState();
+        float characterHeight = 2f * ((com.jme3.bounding.BoundingBox)
+                character.getWorldBound()).getYExtent();
         character.setLocalTranslation(gateSpawnPosition);
 
 
@@ -208,7 +220,7 @@ public class Main extends SimpleApplication {
         characterControl =
                 new BetterCharacterControl(
                         0.5f,
-                        1.8f,
+                        characterHeight,
                         80f
                 );
 
@@ -427,14 +439,10 @@ public class Main extends SimpleApplication {
         );
 
 
-        pixelScreen.setWidth(
-                1280
-        );
+        pixelScreen.setWidth(cam.getWidth());
 
 
-        pixelScreen.setHeight(
-                720
-        );
+        pixelScreen.setHeight(cam.getHeight());
 
 
         guiNode.attachChild(pixelScreen);
@@ -492,6 +500,8 @@ public class Main extends SimpleApplication {
                 }
         );
         stateManager.attach(episodeFour);
+        ending = new EndingAppState(character, characterControl, this::clearPlayerMovement);
+        stateManager.attach(ending);
         // =====================================================
         // INPUT
         // =====================================================
@@ -582,6 +592,12 @@ public class Main extends SimpleApplication {
 
     @Override
     public void simpleUpdate(float tpf) {
+        // Ending owns movement/camera while dialogue, goals and the walk are active.
+        if (ending != null && ending.controlsLocked()) {
+            clearPlayerMovement();
+            ending.updateCamera(tpf);
+            return;
+        }
 
         Vector3f walkDirection =
                 new Vector3f(
@@ -705,6 +721,24 @@ public class Main extends SimpleApplication {
         cam.lookAt(lookAtPoint, Vector3f.UNIT_Y);
     }
 
+    private void clearPlayerMovement() {
+        movingForward = movingBackward = movingLeft = movingRight = false;
+        characterControl.setWalkDirection(Vector3f.ZERO);
+    }
+
+    static Node createFeetAlignedCharacter(Spatial model) {
+        model.updateGeometricState();
+        if (!(model.getWorldBound() instanceof com.jme3.bounding.BoundingBox bounds)) {
+            throw new IllegalStateException("Character model has no usable bounds");
+        }
+        Vector3f center = bounds.getCenter();
+        model.move(-center.x, bounds.getYExtent() - center.y, -center.z);
+        Node feet = new Node("PlayerFeet");
+        feet.attachChild(model);
+        feet.updateGeometricState();
+        return feet;
+    }
+
     private Spatial findSpatialByName(
             Spatial spatial,
             String name
@@ -739,6 +773,7 @@ public class Main extends SimpleApplication {
                 boolean isPressed,
                 float tpf) {
 
+            if (ending != null && ending.controlsLocked()) return;
             if ("PrintPosition".equals(name) && isPressed) {
                 Vector3f position = character.getWorldTranslation();
                 System.out.printf(java.util.Locale.ROOT,
@@ -786,6 +821,7 @@ public class Main extends SimpleApplication {
                 float tpf
         ) {
 
+            if (ending != null && ending.controlsLocked()) return;
             if (name.equals("CameraZoomIn")) {
                 cameraDistance -=
                         value * CAMERA_ZOOM_SPEED;

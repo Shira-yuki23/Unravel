@@ -76,7 +76,7 @@ public final class ArchaeologicalArchiveAppState extends BaseAppState
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
-        if (ARCHIVE_TOGGLE.equals(name) && isPressed) {
+        if (isEnabled() && ARCHIVE_TOGGLE.equals(name) && isPressed) {
             setArchiveVisible(!visible);
         }
     }

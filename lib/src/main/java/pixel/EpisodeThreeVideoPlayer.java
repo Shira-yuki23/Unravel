@@ -44,7 +44,7 @@ public final class EpisodeThreeVideoPlayer extends Application {
             view.fitWidthProperty().bind(scene.widthProperty());
             view.fitHeightProperty().bind(scene.heightProperty());
 
-            stage.setTitle("Unravel - Memory " + number);
+            stage.setTitle("end".equals(number) ? "UNRAVEL - Ending" : "Unravel - Memory " + number);
             stage.setScene(scene);
             stage.setFullScreenExitKeyCombination(KeyCombination.NO_MATCH);
             stage.setFullScreenExitHint("ESC: skip video");

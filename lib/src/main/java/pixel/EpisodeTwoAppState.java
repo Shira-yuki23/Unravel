@@ -186,6 +186,9 @@ public final class EpisodeTwoAppState extends BaseAppState
                     hideDialogue();
                     gui.showPrompt("");
                     phase = Phase.DONE;
+                    // Musafir leaves after the first encounter; the ending recalls him.
+                    machine.setCullHint(Spatial.CullHint.Always);
+                    unregisterPhysics();
                 }
             }
             default -> { }
@@ -198,6 +201,27 @@ public final class EpisodeTwoAppState extends BaseAppState
             machineTouched = true;
         }
     }
+    public Vector3f getBallPosition() {
+        return ballPosition.clone();
+    }
+
+    public Vector3f getMachinePosition() {
+        return machinePosition.clone();
+    }
+
+    public boolean isBallCollected() {
+        return phase.ordinal() >= Phase.REVEAL.ordinal();
+    }
+
+    /** Hand the existing artwork to the ending, without its old static collider. */
+    public Node takeFinalMusafir() {
+        if (!isComplete()) throw new IllegalStateException("Episode 2 is unfinished");
+        unregisterPhysics();
+        machine.removeControl(machineBody);
+        machine.removeFromParent();
+        return machine;
+    }
+
     public boolean isComplete() {
         return phase == Phase.DONE;
     }
@@ -239,7 +263,7 @@ public final class EpisodeTwoAppState extends BaseAppState
     @Override protected void onEnable() {
         gui.setVisible(true);
         world.setCullHint(phase == Phase.WAITING ? Spatial.CullHint.Always : Spatial.CullHint.Inherit);
-        if (phase.ordinal() >= Phase.REVEAL.ordinal()) registerPhysics();
+        if (phase.ordinal() >= Phase.REVEAL.ordinal() && phase != Phase.DONE) registerPhysics();
     }
 
     @Override protected void onDisable() {

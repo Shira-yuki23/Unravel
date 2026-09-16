@@ -70,6 +70,8 @@ public final class CrowNpcAppState extends BaseAppState
     private Vector3f perchPosition;
     private Vector3f deliveryStartPosition;
     private BitmapText promptText;
+    private BitmapText promptWeight;
+    private Geometry promptBackground;
     private Picture dialoguePlate;
     private Picture rewardIcon;
     private BitmapText dialogueText;
@@ -152,7 +154,7 @@ public final class CrowNpcAppState extends BaseAppState
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
-        if (!TALK_MAPPING.equals(name) || !isPressed) {
+        if (!isEnabled() || !TALK_MAPPING.equals(name) || !isPressed) {
             return;
         }
 
@@ -180,6 +182,8 @@ public final class CrowNpcAppState extends BaseAppState
         }
         if (promptText != null) {
             promptText.removeFromParent();
+            promptWeight.removeFromParent();
+            promptBackground.removeFromParent();
         }
         if (dialoguePlate != null) {
             dialoguePlate.removeFromParent();
@@ -206,6 +210,14 @@ public final class CrowNpcAppState extends BaseAppState
         }
         hidePrompt();
         hideDialogue();
+    }
+
+    public Vector3f getMapPosition() {
+        return perchPosition == null ? null : perchPosition.clone();
+    }
+
+    public boolean hasCollectedReward() {
+        return phase == EncounterPhase.DELIVERED || phase == EncounterPhase.VANISHED;
     }
 
     public boolean isEncounterComplete() {
@@ -241,16 +253,19 @@ public final class CrowNpcAppState extends BaseAppState
                 "Interface/Fonts/Default.fnt"
         );
 
+        promptBackground = new Geometry("CrowBlackPrompt", new Quad(1f, 1f));
+        Material promptMaterial = new Material(simpleApplication.getAssetManager(),
+                "Common/MatDefs/Misc/Unshaded.j3md");
+        promptMaterial.setColor("Color", ColorRGBA.Black);
+        promptBackground.setMaterial(promptMaterial);
+        simpleApplication.getGuiNode().attachChild(promptBackground);
         promptText = new BitmapText(font);
-        promptText.setSize(19f);
-        promptText.setColor(new ColorRGBA(1f, 0.90f, 0.52f, 1f));
-        promptText.setLocalTranslation(
-                simpleApplication.getCamera().getWidth() * 0.5f - 128f,
-                92f,
-                0f
-        );
-        promptText.setCullHint(Spatial.CullHint.Always);
+        promptWeight = new BitmapText(font);
+        promptText.setColor(ColorRGBA.White);
+        promptWeight.setColor(ColorRGBA.White);
         simpleApplication.getGuiNode().attachChild(promptText);
+        simpleApplication.getGuiNode().attachChild(promptWeight);
+        hidePrompt();
 
         dialoguePlate = new Picture("DialoguePlate");
         dialoguePlate.setImage(
@@ -488,16 +503,36 @@ public final class CrowNpcAppState extends BaseAppState
     }
 
     private void showPrompt(String text) {
+        float width = simpleApplication.getCamera().getWidth();
+        float height = simpleApplication.getCamera().getHeight();
+        float size = 26f * Math.min(1f, Math.min(width / 720f, height / 540f));
         promptText.setText(text);
-        promptText.setCullHint(Spatial.CullHint.Never);
+        promptWeight.setText(text);
+        promptText.setSize(size);
+        if (promptText.getLineWidth() > width - 64f) {
+            size *= (width - 64f) / promptText.getLineWidth();
+            promptText.setSize(size);
+        }
+        promptWeight.setSize(size);
+        float panelWidth = promptText.getLineWidth() + 48f;
+        float panelHeight = promptText.getLineHeight() + 24f;
+        float left = (width - panelWidth) / 2f;
+        promptBackground.setLocalScale(panelWidth, panelHeight, 1f);
+        promptBackground.setLocalTranslation(left, height - panelHeight - 24f, 20f);
+        promptText.setLocalTranslation(left + 24f, height - 36f, 21f);
+        promptWeight.setLocalTranslation(left + 25f, height - 36f, 21f);
+        promptBackground.setCullHint(Spatial.CullHint.Inherit);
+        promptText.setCullHint(Spatial.CullHint.Inherit);
+        promptWeight.setCullHint(Spatial.CullHint.Inherit);
     }
 
     private void hidePrompt() {
         if (promptText != null) {
             promptText.setCullHint(Spatial.CullHint.Always);
+            promptWeight.setCullHint(Spatial.CullHint.Always);
+            promptBackground.setCullHint(Spatial.CullHint.Always);
         }
     }
-
     private boolean isPlayerCloseToTower() {
         Vector3f playerPosition = player.getWorldTranslation();
         float xDifference = playerPosition.x - perchPosition.x;

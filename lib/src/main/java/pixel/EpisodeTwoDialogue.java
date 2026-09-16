@@ -58,7 +58,11 @@ final class EpisodeTwoDialogue {
     }
 
     void showDialogue(String speaker, String line) {
-        text.setText(speaker + "\n" + line + "\n\n[ E ] Continue");
+        showDialogue(speaker, line, "[ E ] Continue");
+    }
+
+    void showDialogue(String speaker, String line, String hint) {
+        text.setText(speaker + "\n" + line + (hint.isEmpty() ? "" : "\n\n" + hint));
         dialogue.setCullHint(Spatial.CullHint.Inherit);
     }
 

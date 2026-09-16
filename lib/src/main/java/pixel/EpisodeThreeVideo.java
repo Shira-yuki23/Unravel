@@ -15,6 +15,10 @@ final class EpisodeThreeVideo {
     private Process process;
 
     synchronized void play(int number, Consumer<String> finished) {
+        play(Integer.toString(number), finished);
+    }
+
+    synchronized void play(String number, Consumer<String> finished) {
         if (process != null && process.isAlive()) {
             finished.accept("Another video is already playing.");
             return;
@@ -75,7 +79,7 @@ final class EpisodeThreeVideo {
                     "-cp", codeLocation.toString(),
                     "pixel.EpisodeThreeVideoPlayer",
                     source,
-                    Integer.toString(number)
+                    number
             );
             builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
             builder.redirectError(ProcessBuilder.Redirect.INHERIT);

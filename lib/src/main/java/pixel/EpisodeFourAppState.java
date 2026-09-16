@@ -192,6 +192,26 @@ public final class EpisodeFourAppState extends BaseAppState {
         return playing;
     }
 
+    public int getObjectCount() {
+        return completed.length;
+    }
+
+    public int getCollectedCount() {
+        int count = 0;
+        for (boolean collected : completed) {
+            if (collected) count++;
+        }
+        return count;
+    }
+
+    public Vector3f getObjectPosition(int index) {
+        return POSITIONS[index].clone();
+    }
+
+    public boolean isObjectAvailable(int index) {
+        return isEnabled() && activated && !completed[index];
+    }
+
     public boolean isComplete() {
         if (!activated) {
             return false;

@@ -72,6 +72,13 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
     private Texture2D radarTexture;
     private Geometry playerMarker;
 
+    private final java.util.List<Node> objectMarkers = new java.util.ArrayList<>();
+    private Node targetMarker;
+    private BitmapText targetText;
+    private BitmapText collectionText;
+    private Geometry collectionFill;
+    private float sparkleTime;
+
     private float radarMapX;
     private float radarMapY;
     private float radarMapWidth;
@@ -176,7 +183,7 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
-        if (!isPressed) {
+        if (!isEnabled() || !isPressed) {
             return;
         }
 
@@ -211,6 +218,8 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
             return;
         }
 
+        updateCollectionMap(tpf);
+
         Vector3f mapPosition = radarCamera.getScreenCoordinates(
                 player.getWorldTranslation()
         );
@@ -223,7 +232,7 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
                 v >= 0f && v <= 1f;
 
         playerMarker.setCullHint(
-                insideMap ? Spatial.CullHint.Never : Spatial.CullHint.Always
+                insideMap ? Spatial.CullHint.Inherit : Spatial.CullHint.Always
         );
 
         if (insideMap) {
@@ -245,6 +254,111 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
             );
         }
     }
+    // Shared progress query: the radar and ending read the same episode flags.
+    public int getCollectedCount() {
+        CrowNpcAppState crow = getState(CrowNpcAppState.class);
+        EpisodeTwoAppState two = getState(EpisodeTwoAppState.class);
+        EpisodeThreeAppState three = getState(EpisodeThreeAppState.class);
+        EpisodeFourAppState four = getState(EpisodeFourAppState.class);
+        if (crow == null || two == null || three == null || four == null) return 0;
+        return (crow.hasCollectedReward() ? 1 : 0) + (two.isBallCollected() ? 1 : 0)
+                + three.getCollectedCount() + four.getCollectedCount();
+    }
+
+    public int getRequiredCount() {
+        EpisodeThreeAppState three = getState(EpisodeThreeAppState.class);
+        EpisodeFourAppState four = getState(EpisodeFourAppState.class);
+        return three == null || four == null ? 0
+                : 2 + three.getObjectCount() + four.getObjectCount();
+    }
+
+    private void updateCollectionMap(float tpf) {
+        CrowNpcAppState crow = getState(CrowNpcAppState.class);
+        EpisodeTwoAppState two = getState(EpisodeTwoAppState.class);
+        EpisodeThreeAppState three = getState(EpisodeThreeAppState.class);
+        EpisodeFourAppState four = getState(EpisodeFourAppState.class);
+        if (crow == null || two == null || three == null || four == null) return;
+
+        sparkleTime += tpf;
+        int count = getCollectedCount();
+        int total = getRequiredCount();
+        float progress = (float) count / total;
+        collectionText.setText("Collection Progress: " + Math.round(progress * 100f)
+                + "%  (" + count + "/" + total + ")");
+        collectionFill.setCullHint(count == 0 ? Spatial.CullHint.Always : Spatial.CullHint.Inherit);
+        collectionFill.setLocalScale(progress, 1f, 1f);
+
+        Vector3f target = null;
+        if (!crow.isEncounterComplete()) {
+            target = crow.getMapPosition();
+            targetText.setText("FIND: CROW PRINCE");
+        } else if (!two.isBallCollected()) {
+            target = two.getBallPosition();
+            targetText.setText("FIND: BALL / LANGUAGE MODULE");
+        } else if (!two.isComplete()) {
+            target = two.getMachinePosition();
+            targetText.setText("FOLLOW THE SIGNAL: MUSAFIR");
+        } else {
+            targetText.setText(count == total ? "ALL OBJECTS COLLECTED"
+                    : "FOLLOW THE SPARKLES: COLLECT OBJECTS");
+        }
+        EndingAppState ending = getState(EndingAppState.class);
+        if (ending != null && ending.isMusafirAvailable()) {
+            target = ending.getFinalMusafirSpawnPosition();
+            targetText.setText(count == total ? "FINAL SIGNAL: MUSAFIR"
+                    : "MUSAFIR: WAITING FOR ALL " + total + " OBJECTS");
+        }
+        placeMapMarker(targetMarker, target, sparkleTime);
+
+        int markerCount = three.getObjectCount() + four.getObjectCount();
+        while (objectMarkers.size() < markerCount) {
+            Node marker = createSparkle(new ColorRGBA(1f, 0.77f, 0.93f, 1f));
+            objectMarkers.add(marker);
+            radarPanel.attachChild(marker);
+        }
+        for (int i = 0; i < markerCount; i++) {
+            boolean episodeThree = i < three.getObjectCount();
+            int index = episodeThree ? i : i - three.getObjectCount();
+            boolean available = episodeThree ? three.isObjectAvailable(index)
+                    : four.isObjectAvailable(index);
+            Vector3f position = available ? (episodeThree ? three.getObjectPosition(index)
+                    : four.getObjectPosition(index)) : null;
+            placeMapMarker(objectMarkers.get(i), position, sparkleTime + i * 0.47f);
+        }
+    }
+
+    private Node createSparkle(ColorRGBA color) {
+        Node marker = new Node("MapSparkle");
+        marker.attachChild(createRectangle(-1f, -6f, 2f, 12f, color));
+        marker.attachChild(createRectangle(-6f, -1f, 12f, 2f, color));
+        Geometry center = createRectangle(-2f, -2f, 4f, 4f, ColorRGBA.White);
+        center.setLocalTranslation(-2f, -2f, 0.1f);
+        marker.attachChild(center);
+        marker.setCullHint(Spatial.CullHint.Always);
+        return marker;
+    }
+
+    private void placeMapMarker(Node marker, Vector3f position, float time) {
+        if (position == null) {
+            marker.setCullHint(Spatial.CullHint.Always);
+            return;
+        }
+        Vector3f projected = radarCamera.getScreenCoordinates(position);
+        float u = projected.x / radarCamera.getWidth();
+        float v = projected.y / radarCamera.getHeight();
+        if (u < 0f || u > 1f || v < 0f || v > 1f) {
+            marker.setCullHint(Spatial.CullHint.Always);
+            return;
+        }
+        marker.setCullHint(Spatial.CullHint.Inherit);
+        float x = Math.max(radarMapX + 9f,
+                Math.min(radarMapX + radarMapWidth - 9f, radarMapX + u * radarMapWidth));
+        float y = Math.max(radarMapY + 9f,
+                Math.min(radarMapY + radarMapHeight - 9f, radarMapY + v * radarMapHeight));
+        marker.setLocalTranslation(x, y, 4f);
+        marker.setLocalScale(1f + 0.25f * (float) Math.sin(time * 4f));
+    }
+
     private Node createIntroPanel(float screenWidth, float screenHeight) {
         Node panel = new Node("PrologueIntroPanel");
         panel.attachChild(createRectangle(
@@ -367,7 +481,7 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         float x = screenWidth - 512f;
         float y = 34f;
         float panelWidth = 480f;
-        float panelHeight = 344f;
+        float panelHeight = 402f;
         float mapX = x + 20f;
         float mapY = y + 66f;
         float mapWidth = 440f;
@@ -382,7 +496,7 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         // The blue dot is the first lead and later points to Musafir.
         panel.attachChild(createRectangle(mapX + 263f, mapY + 118f, 15f, 15f, SIGNAL_COLOR));
         panel.attachChild(createText("BLUE SIGNAL: MUSAFIR", 14f, SIGNAL_COLOR, x + 18f, y + 38f));
-        panel.attachChild(createText("M: close radar", 14f, MUTED_TEXT_COLOR, x + 18f, y + 18f));
+        panel.attachChild(createText("M: close radar    Sparkles: uncollected objects", 14f, MUTED_TEXT_COLOR, x + 18f, y + 18f));
 
         return panel;
     }*/
@@ -390,12 +504,12 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         Node panel = new Node("AlienRadarPanel");
 
         float panelWidth = 480f;
-        float panelHeight = 344f;
+        float panelHeight = 402f;
         float x = screenWidth - panelWidth - 32f;
         float y = 34f;
 
         radarMapX = x + 20f;
-        radarMapY = y + 66f;
+        radarMapY = y + 124f;
         radarMapWidth = 440f;
         radarMapHeight = 210f;
 
@@ -424,6 +538,21 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
                 radarMapWidth, radarMapHeight
         ));
 
+        targetMarker = createSparkle(SIGNAL_COLOR);
+        panel.attachChild(targetMarker);
+        targetText = createText("FIND: CROW PRINCE", 14f, SIGNAL_COLOR,
+                x + 18f, y + 106f);
+        panel.attachChild(targetText);
+        collectionText = createText("Collection Progress: 0%", 14f, TEXT_COLOR,
+                x + 18f, y + 82f);
+        panel.attachChild(collectionText);
+        panel.attachChild(createRectangle(x + 20f, y + 54f, 440f, 10f,
+                new ColorRGBA(0.12f, 0.20f, 0.28f, 1f)));
+        collectionFill = createRectangle(x + 20f, y + 54f, 440f, 10f, SIGNAL_COLOR);
+        collectionFill.setLocalTranslation(x + 20f, y + 54f, 2f);
+        collectionFill.setCullHint(Spatial.CullHint.Always);
+        panel.attachChild(collectionFill);
+
         playerMarker = createRectangle(
                 0f, 0f, 10f, 10f, ColorRGBA.Yellow
         );
@@ -436,7 +565,7 @@ public final class PrologueAppState extends BaseAppState implements ActionListen
         ));
 
         panel.attachChild(createText(
-                "M: close radar", 14f, MUTED_TEXT_COLOR,
+                "M: close radar    Sparkles: uncollected objects", 14f, MUTED_TEXT_COLOR,
                 x + 18f, y + 18f
         ));
 

@@ -219,6 +219,26 @@ public final class EpisodeThreeAppState extends BaseAppState
         return playing;
     }
 
+    public int getObjectCount() {
+        return completed.length;
+    }
+
+    public int getCollectedCount() {
+        int count = 0;
+        for (boolean collected : completed) {
+            if (collected) count++;
+        }
+        return count;
+    }
+
+    public Vector3f getObjectPosition(int index) {
+        return POSITIONS[index].clone();
+    }
+
+    public boolean isObjectAvailable(int index) {
+        return isEnabled() && activated && !completed[index];
+    }
+
     public boolean isComplete() {
         if (!activated) {
             return false;
@@ -234,7 +254,7 @@ public final class EpisodeThreeAppState extends BaseAppState
 
     @Override
     public void onAction(String name, boolean pressed, float tpf) {
-        if (!ESCAPE.equals(name) || !pressed) {
+        if (!isEnabled() || !ESCAPE.equals(name) || !pressed) {
             return;
         }
 
