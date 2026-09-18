@@ -27,14 +27,14 @@ public final class EpisodeFourAppState extends BaseAppState {
     };
 
     private static final Vector3f[] POSITIONS = {
-        new Vector3f(-69.3762f, 1.0397f, -70.8941f),
-        new Vector3f(-123.1982f, 0.9012f, -70.8907f),
-        new Vector3f(-128.7655f, 0.9021f, -95.7054f),
-        new Vector3f(-164.6184f, 1.0398f, -111.4736f),
-        new Vector3f(-164.6182f, 0.9024f, -121.2260f),
-        new Vector3f(-81.8545f, 1.0395f, -49.6336f),
-        new Vector3f(-111.7705f, 0.9022f, 3.5703f)
-    };
+    	    new Vector3f(-164.5035f, 0.8995f, -123.4167f),
+    	    new Vector3f(-84.6672f, 0.8969f, -123.9114f),
+    	    new Vector3f(-83.5471f, 0.9022f, -94.1160f),
+    	    new Vector3f(-47.9811f, 0.9020f, -66.0651f),
+    	    new Vector3f(38.8041f, 0.9019f, -66.0620f),
+    	    new Vector3f(103.5508f, 1.0400f, -71.8121f),
+    	    new Vector3f(-59.9736f, 1.0399f, 29.9282f)
+    	};
 
     private final Spatial player;
     private final BooleanSupplier episodeTwoFinished;

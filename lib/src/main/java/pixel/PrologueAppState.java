@@ -29,9 +29,9 @@ import com.jme3.ui.Picture;
 /**
  * The first playable slice of Unravel's prologue.
  *
- * <p>It provides an opening message, a persistent goals panel (A), and an
+ * It provides an opening message, a persistent goals panel (A), and an
  * alien radar with the blue Musafir signal (M). It deliberately contains no
- * camera, map, or NPC logic so those systems can remain separate.</p>
+ * camera, map, or NPC logic so those systems can remain separate.
  */
 public final class PrologueAppState extends BaseAppState implements ActionListener {
 

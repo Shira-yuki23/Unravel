@@ -27,14 +27,14 @@ public final class EpisodeThreeAppState extends BaseAppState
     private static final float TRIGGER_RADIUS = 2.5f;
 
     private static final Vector3f[] POSITIONS = {
-        new Vector3f(30.8021f, 1.0395f, 93.9796f),
-        new Vector3f(-19.1397f, 1.0399f, -5.8376f),
-        new Vector3f(-36.4585f, 1.0400f, -61.7493f),
-        new Vector3f(-60.2901f, 1.0400f, -73.0625f),
-        new Vector3f(-71.8739f, 1.0400f, -116.1707f),
-        new Vector3f(41.5420f, 0.9024f, -61.4577f),
-        new Vector3f(-49.5028f, 1.0400f, 65.8831f)
-    };
+    	    new Vector3f(-22.9432f, 0.9022f, 57.1045f),
+    	    new Vector3f(-57.2101f, 0.8978f, 54.1229f),
+    	    new Vector3f(-109.1671f, 0.9024f, 54.1228f),
+    	    new Vector3f(-163.7216f, 0.9024f, 55.8240f),
+    	    new Vector3f(-184.9259f, 0.9016f, -40.9844f),
+    	    new Vector3f(41.5420f, 0.9024f, -61.4577f),
+    	    new Vector3f(-176.9718f, 0.9021f, -94.1070f)
+    	};
 
     private final Spatial player;
     private final BooleanSupplier episodeTwoFinished;

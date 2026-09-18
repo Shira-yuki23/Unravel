@@ -23,9 +23,9 @@ import java.util.Map;
 /** Final encounter. Positions below are the user's supplied feet/ground positions. */
 public final class EndingAppState extends BaseAppState implements ActionListener {
     private static final Vector3f FINAL_MUSAFIR_SPAWN_POSITION =
-            new Vector3f(-197.6030f, 1.0355f, 63.0970f);
+            new Vector3f(-47.7463f, 1.0400f, -21.4564f);
     private static final Vector3f FINAL_WALK_DESTINATION =
-            new Vector3f(-67.6267f, 1.0400f, 64.9067f);
+            new Vector3f(27.7568f, 1.0387f, 44.7698f);
     private static final String ENDING_VIDEO = "end";
     private static final String CONTINUE = "ending-continue";
     private static final String YES = "ending-yes";

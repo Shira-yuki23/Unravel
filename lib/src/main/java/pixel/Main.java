@@ -36,7 +36,7 @@ public class Main extends SimpleApplication {
     // =========================================================
     // PIXEL RESOLUTION
     // =========================================================
-	//223-smooth
+	//223-smooth // shifa-pixalating
     private static final int PIXEL_WIDTH = 1280;
     private static final int PIXEL_HEIGHT = 720;
 
@@ -50,6 +50,7 @@ public class Main extends SimpleApplication {
     private BetterCharacterControl characterControl;
 
     private float characterSpeed = 5f;
+    private static final Vector3f JUMP_FORCE = new Vector3f(0f, 12f, 0f);
 
     private boolean movingForward = false;
     private boolean movingBackward = false;
@@ -79,6 +80,7 @@ public class Main extends SimpleApplication {
     private EpisodeThreeAppState episodeThree;
     private EpisodeFourAppState episodeFour;
     private EndingAppState ending;
+    private MainMenu mainMenu;
 
     // =========================================================
     // MAIN
@@ -159,9 +161,7 @@ public class Main extends SimpleApplication {
 
         Vector3f gateSpawnPosition =
                 new Vector3f(
-                        63.7575f,
-                        0.3852f,
-                        84.4720f
+                		27.7568f, 1.0387f, 44.7698f
                 );
 
 
@@ -247,6 +247,7 @@ public class Main extends SimpleApplication {
                         0f
                 )
         );
+        characterControl.setJumpForce(JUMP_FORCE);
 
 
         // =====================================================
@@ -460,48 +461,16 @@ public class Main extends SimpleApplication {
         
         //
         //223-paschng
-        stateManager.attach(new PrologueAppState(campus, character));
-        ArchaeologicalArchiveAppState archive =
-                new ArchaeologicalArchiveAppState();
-
-        stateManager.attach(archive);
-
-        CrowNpcAppState crow = new CrowNpcAppState(character, archive);
-        stateManager.attach(crow);
-        episodeTwo = new EpisodeTwoAppState(
-                character, bulletAppState.getPhysicsSpace(), crow::isEncounterComplete, archive,
-                new Vector3f(40.7807f, 0.3821f, 49.6151f),
-                new Vector3f(45.4184f, 0.3847f, -48.7126f)
-        );
-        stateManager.attach(episodeTwo);
-        episodeThree = new EpisodeThreeAppState(
-                character,
-                episodeTwo::isComplete,
-                () -> {
-                    movingForward = false;
-                    movingBackward = false;
-                    movingLeft = false;
-                    movingRight = false;
-                    characterControl.setWalkDirection(new Vector3f());
-                }
-        );
-
-        stateManager.attach(episodeThree);
-
-        episodeFour = new EpisodeFourAppState(
-                character,
-                episodeTwo::isComplete,
-                () -> {
-                    movingForward = false;
-                    movingBackward = false;
-                    movingLeft = false;
-                    movingRight = false;
-                    characterControl.setWalkDirection(new Vector3f());
-                }
-        );
-        stateManager.attach(episodeFour);
-        ending = new EndingAppState(character, characterControl, this::clearPlayerMovement);
-        stateManager.attach(ending);
+        bulletAppState.setDebugEnabled(false);
+        bulletAppState.setEnabled(false);
+        setDisplayFps(false);
+        setDisplayStatView(false);
+        mainMenu = new MainMenu(this, campus, () -> {
+            mainMenu = null;
+            clearPlayerMovement();
+            bulletAppState.setEnabled(true);
+            startStory(campus);
+        });
         // =====================================================
         // INPUT
         // =====================================================
@@ -509,6 +478,8 @@ public class Main extends SimpleApplication {
         // P prints the player feet position for placing story objects.
         inputManager.addMapping("PrintPosition", new KeyTrigger(KeyInput.KEY_P));
         inputManager.addListener(actionListener, "PrintPosition");
+
+        inputManager.addMapping("CharacterJump", new KeyTrigger(KeyInput.KEY_S));
 
         // A = Forward
         inputManager.addMapping(
@@ -557,7 +528,8 @@ public class Main extends SimpleApplication {
                 "CharacterForward",
                 "CharacterBackward",
                 "CharacterLeft",
-                "CharacterRight"
+                "CharacterRight",
+                "CharacterJump"
         );
         //223
         inputManager.addMapping(
@@ -592,6 +564,11 @@ public class Main extends SimpleApplication {
 
     @Override
     public void simpleUpdate(float tpf) {
+        if (mainMenu != null) {
+            clearPlayerMovement();
+            mainMenu.update();
+            return;
+        }
         // Ending owns movement/camera while dialogue, goals and the walk are active.
         if (ending != null && ending.controlsLocked()) {
             clearPlayerMovement();
@@ -721,6 +698,51 @@ public class Main extends SimpleApplication {
         cam.lookAt(lookAtPoint, Vector3f.UNIT_Y);
     }
 
+    private void startStory(Spatial campus) {
+        stateManager.attach(new PrologueAppState(campus, character));
+        ArchaeologicalArchiveAppState archive =
+                new ArchaeologicalArchiveAppState();
+
+        stateManager.attach(archive);
+
+        CrowNpcAppState crow = new CrowNpcAppState(character, archive);
+        stateManager.attach(crow);
+        episodeTwo = new EpisodeTwoAppState(
+                character, bulletAppState.getPhysicsSpace(), crow::isEncounterComplete, archive,
+                new Vector3f(40.7807f, 0.3821f, 49.6151f),
+                new Vector3f(45.4184f, 0.3847f, -48.7126f)
+        );
+        stateManager.attach(episodeTwo);
+        episodeThree = new EpisodeThreeAppState(
+                character,
+                episodeTwo::isComplete,
+                () -> {
+                    movingForward = false;
+                    movingBackward = false;
+                    movingLeft = false;
+                    movingRight = false;
+                    characterControl.setWalkDirection(new Vector3f());
+                }
+        );
+
+        stateManager.attach(episodeThree);
+
+        episodeFour = new EpisodeFourAppState(
+                character,
+                episodeTwo::isComplete,
+                () -> {
+                    movingForward = false;
+                    movingBackward = false;
+                    movingLeft = false;
+                    movingRight = false;
+                    characterControl.setWalkDirection(new Vector3f());
+                }
+        );
+        stateManager.attach(episodeFour);
+        ending = new EndingAppState(character, characterControl, this::clearPlayerMovement);
+        stateManager.attach(ending);
+    }
+
     private void clearPlayerMovement() {
         movingForward = movingBackward = movingLeft = movingRight = false;
         characterControl.setWalkDirection(Vector3f.ZERO);
@@ -773,12 +795,16 @@ public class Main extends SimpleApplication {
                 boolean isPressed,
                 float tpf) {
 
-            if (ending != null && ending.controlsLocked()) return;
+            if (mainMenu != null || (ending != null && ending.controlsLocked())) return;
             if ("PrintPosition".equals(name) && isPressed) {
                 Vector3f position = character.getWorldTranslation();
                 System.out.printf(java.util.Locale.ROOT,
                         "PLACEMENT POSITION: new Vector3f(%.4ff, %.4ff, %.4ff)%n",
                         position.x, position.y, position.z);
+                return;
+            }
+            if ("CharacterJump".equals(name) && isPressed) {
+                characterControl.jump();
                 return;
             }
             if (name.equals(
@@ -821,7 +847,7 @@ public class Main extends SimpleApplication {
                 float tpf
         ) {
 
-            if (ending != null && ending.controlsLocked()) return;
+            if (mainMenu != null || (ending != null && ending.controlsLocked())) return;
             if (name.equals("CameraZoomIn")) {
                 cameraDistance -=
                         value * CAMERA_ZOOM_SPEED;
